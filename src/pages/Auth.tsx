@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2 } from "lucide-react";
+import { Loader2, ArrowLeft } from "lucide-react";
 import { z } from "zod";
 
 const authSchema = z.object({
@@ -138,9 +138,16 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">Welcome to FundiConnect</CardTitle>
+      <div className="w-full max-w-md">
+        <Link to="/">
+          <Button variant="ghost" className="mb-4">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Home
+          </Button>
+        </Link>
+        <Card className="w-full">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-2xl font-bold text-center">Welcome to FundiConnect</CardTitle>
           <CardDescription className="text-center">
             Sign in or create an account to get started
           </CardDescription>
@@ -239,6 +246,7 @@ const Auth = () => {
           </Tabs>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 };

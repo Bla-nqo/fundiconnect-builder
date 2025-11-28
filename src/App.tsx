@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import GetStarted from "./pages/GetStarted";
 import ClientDashboard from "./pages/ClientDashboard";
 import FundiDashboard from "./pages/FundiDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="/get-started" element={<GetStarted />} />
             <Route path="/client-dashboard" element={<ClientDashboard />} />
             <Route path="/fundi-dashboard" element={<FundiDashboard />} />
+            <Route path="/admin-dashboard" element={<AdminDashboard />} />
             <Route path="/fundi-signup" element={<GetStarted />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
