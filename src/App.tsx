@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import GetStarted from "./pages/GetStarted";
 import ClientDashboard from "./pages/ClientDashboard";
 import FundiDashboard from "./pages/FundiDashboard";
+import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -21,6 +22,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
             <Route path="/get-started" element={<GetStarted />} />
             <Route path="/client-dashboard" element={<ClientDashboard />} />
             <Route path="/fundi-dashboard" element={<FundiDashboard />} />
