@@ -64,40 +64,52 @@ export type Database = {
       }
       jobs: {
         Row: {
+          actual_end_date: string | null
           budget: number | null
           client_id: string
           created_at: string
           description: string
+          end_date: string | null
           fundi_id: string | null
           id: string
           location: string
+          progress: number | null
           required_skills: string[] | null
+          start_date: string | null
           status: string
           title: string
           updated_at: string
         }
         Insert: {
+          actual_end_date?: string | null
           budget?: number | null
           client_id: string
           created_at?: string
           description: string
+          end_date?: string | null
           fundi_id?: string | null
           id?: string
           location: string
+          progress?: number | null
           required_skills?: string[] | null
+          start_date?: string | null
           status?: string
           title: string
           updated_at?: string
         }
         Update: {
+          actual_end_date?: string | null
           budget?: number | null
           client_id?: string
           created_at?: string
           description?: string
+          end_date?: string | null
           fundi_id?: string | null
           id?: string
           location?: string
+          progress?: number | null
           required_skills?: string[] | null
+          start_date?: string | null
           status?: string
           title?: string
           updated_at?: string
@@ -168,6 +180,44 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      ratings: {
+        Row: {
+          client_id: string
+          created_at: string
+          fundi_id: string
+          id: string
+          job_id: string
+          rating: number
+          review: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          fundi_id: string
+          id?: string
+          job_id: string
+          rating: number
+          review?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          fundi_id?: string
+          id?: string
+          job_id?: string
+          rating?: number
+          review?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ratings_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
