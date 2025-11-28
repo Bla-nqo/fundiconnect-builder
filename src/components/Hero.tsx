@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Shield, CheckCircle, Users } from "lucide-react";
+import { ArrowRight, Shield, CheckCircle, Users, LogIn } from "lucide-react";
 import { Link } from "react-router-dom";
 import heroImage from "@/assets/hero-fundi.jpg";
+import { ThemeToggle } from "./ThemeToggle";
 
 export const Hero = () => {
   return (
@@ -14,6 +15,22 @@ export const Hero = () => {
           className="w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-earth/95 via-earth/85 to-earth/60 dark:from-background/98 dark:via-background/95 dark:to-background/85" />
+      </div>
+
+      {/* Top Navigation */}
+      <div className="absolute top-0 left-0 right-0 z-20 p-4">
+        <div className="max-w-7xl mx-auto flex justify-between items-center">
+          <h2 className="text-2xl font-heading font-bold text-earth-foreground">FundiConnect</h2>
+          <div className="flex items-center gap-4">
+            <Button asChild variant="ghost" size="sm" className="text-earth-foreground hover:bg-earth-foreground/10">
+              <Link to="/auth">
+                <LogIn className="w-4 h-4 mr-2" />
+                Sign In
+              </Link>
+            </Button>
+            <ThemeToggle />
+          </div>
+        </div>
       </div>
 
       <div className="container mx-auto px-4 relative z-10">
