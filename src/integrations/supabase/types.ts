@@ -62,6 +62,30 @@ export type Database = {
         }
         Relationships: []
       }
+      job_categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       jobs: {
         Row: {
           actual_end_date: string | null
@@ -233,6 +257,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_restrictions: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          reason: string
+          restricted_by: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          reason: string
+          restricted_by: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          reason?: string
+          restricted_by?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
