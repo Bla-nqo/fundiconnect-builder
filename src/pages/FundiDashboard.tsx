@@ -95,26 +95,44 @@ const FundiDashboard = () => {
 
     const { data: active } = await supabase
       .from("jobs")
-      .select(`
-        *,
-        profiles!jobs_client_id_fkey (full_name)
-      `)
+      .select("*")
       .eq("fundi_id", user.id)
       .in("status", ["in-progress", "accepted"])
       .order("created_at", { ascending: false });
 
     const { data: opportunities } = await supabase
       .from("jobs")
-      .select(`
-        *,
-        profiles!jobs_client_id_fkey (full_name)
-      `)
+      .select("*")
       .is("fundi_id", null)
       .eq("status", "open")
       .limit(10);
 
-    setActiveJobs(active || []);
-    setNewOpportunities(opportunities || []);
+    // Fetch client profiles for active jobs
+    const activeWithProfiles = await Promise.all(
+      (active || []).map(async (job) => {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("user_id", job.client_id)
+          .single();
+        return { ...job, profiles: profile || { full_name: "Unknown" } };
+      })
+    );
+
+    // Fetch client profiles for opportunities
+    const opportunitiesWithProfiles = await Promise.all(
+      (opportunities || []).map(async (job) => {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("user_id", job.client_id)
+          .single();
+        return { ...job, profiles: profile || { full_name: "Unknown" } };
+      })
+    );
+
+    setActiveJobs(activeWithProfiles);
+    setNewOpportunities(opportunitiesWithProfiles);
   };
 
   const calculateProgress = (startDate: string | null, endDate: string | null) => {
