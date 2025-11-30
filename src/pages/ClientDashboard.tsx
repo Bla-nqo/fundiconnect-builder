@@ -88,35 +88,60 @@ const ClientDashboard = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data } = await supabase
+    const { data: jobsData } = await supabase
       .from("jobs")
-      .select(`
-        *,
-        fundi_profiles!jobs_fundi_id_fkey (
-          *,
-          profiles!fundi_profiles_user_id_fkey (full_name)
-        )
-      `)
+      .select("*")
       .eq("client_id", user.id)
       .order("created_at", { ascending: false });
 
-    setJobs(data || []);
+    if (jobsData) {
+      const jobsWithDetails = await Promise.all(
+        jobsData.map(async (job) => {
+          if (job.fundi_id) {
+            const { data: fundiProfile } = await supabase
+              .from("fundi_profiles")
+              .select("*")
+              .eq("user_id", job.fundi_id)
+              .single();
+
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("full_name")
+              .eq("user_id", job.fundi_id)
+              .single();
+
+            return {
+              ...job,
+              fundi_profiles: fundiProfile ? {
+                ...fundiProfile,
+                profiles: profile || { full_name: "Unknown" }
+              } : null
+            };
+          }
+          return { ...job, fundi_profiles: null };
+        })
+      );
+      setJobs(jobsWithDetails);
+    }
   };
 
   const fetchFundis = async () => {
-    const { data } = await supabase
+    const { data: fundisData } = await supabase
       .from("fundi_profiles")
-      .select(`
-        *,
-        profiles!fundi_profiles_user_id_fkey (full_name)
-      `)
+      .select("*")
       .eq("admin_approved", true)
       .eq("mobile_verified", true)
       .limit(6);
 
-    if (data) {
-      const fundisWithRatings = await Promise.all(
-        data.map(async (fundi) => {
+    if (fundisData) {
+      const fundisWithDetails = await Promise.all(
+        fundisData.map(async (fundi) => {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("full_name")
+            .eq("user_id", fundi.user_id)
+            .single();
+
           const { data: ratings } = await supabase
             .from("ratings")
             .select("rating")
@@ -126,10 +151,14 @@ const ClientDashboard = () => {
             ? ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length
             : 0;
 
-          return { ...fundi, avg_rating };
+          return { 
+            ...fundi, 
+            profiles: profile || { full_name: "Unknown" },
+            avg_rating 
+          };
         })
       );
-      setFundis(fundisWithRatings);
+      setFundis(fundisWithDetails);
     }
   };
 
