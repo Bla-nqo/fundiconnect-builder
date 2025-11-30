@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -266,8 +267,55 @@ const ClientDashboard = () => {
                   <Input type="number" value={jobForm.budget} onChange={(e) => setJobForm({ ...jobForm, budget: e.target.value })} required />
                 </div>
                 <div className="space-y-2">
-                  <Label>Required Skills (comma-separated)</Label>
-                  <Input value={jobForm.skills} onChange={(e) => setJobForm({ ...jobForm, skills: e.target.value })} required />
+                  <Label>Required Skills</Label>
+                  <Select
+                    value={jobForm.skills.split(",")[0] || ""}
+                    onValueChange={(value) => {
+                      const currentSkills = jobForm.skills ? jobForm.skills.split(",").map(s => s.trim()) : [];
+                      if (!currentSkills.includes(value)) {
+                        setJobForm({ ...jobForm, skills: [...currentSkills, value].join(", ") });
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select required skills" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[
+                        "Plumbing",
+                        "Electrical",
+                        "Carpentry",
+                        "Painting",
+                        "Masonry",
+                        "Roofing",
+                        "Welding",
+                        "Tiling",
+                        "HVAC",
+                        "Landscaping",
+                      ].map((skill) => (
+                        <SelectItem key={skill} value={skill}>
+                          {skill}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {jobForm.skills && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {jobForm.skills.split(",").map((skill) => (
+                        <Badge
+                          key={skill.trim()}
+                          variant="secondary"
+                          className="cursor-pointer"
+                          onClick={() => {
+                            const skills = jobForm.skills.split(",").map(s => s.trim()).filter(s => s !== skill.trim());
+                            setJobForm({ ...jobForm, skills: skills.join(", ") });
+                          }}
+                        >
+                          {skill.trim()} ×
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <Button type="submit" className="w-full">Post Job</Button>
               </form>

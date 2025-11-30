@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { User, Wrench, CheckCircle, Clock } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface RoleSwitcherProps {
   userId: string;
@@ -19,12 +20,13 @@ export const RoleSwitcher = ({ userId, currentRole, onRoleChange }: RoleSwitcher
   const [showFundiForm, setShowFundiForm] = useState(false);
   const [fundiProfile, setFundiProfile] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [jobCategories, setJobCategories] = useState<any[]>([]);
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
     mobile_number: "",
     location: "",
-    skills: "",
     bio: "",
     experience_years: "",
     hourly_rate: "",
@@ -32,7 +34,19 @@ export const RoleSwitcher = ({ userId, currentRole, onRoleChange }: RoleSwitcher
 
   useEffect(() => {
     checkFundiProfile();
+    fetchJobCategories();
   }, [userId]);
+
+  const fetchJobCategories = async () => {
+    const { data } = await supabase
+      .from("job_categories")
+      .select("*")
+      .order("name");
+
+    if (data) {
+      setJobCategories(data);
+    }
+  };
 
   const checkFundiProfile = async () => {
     const { data } = await supabase
@@ -46,6 +60,16 @@ export const RoleSwitcher = ({ userId, currentRole, onRoleChange }: RoleSwitcher
 
   const handleApplyAsFundi = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (selectedSkills.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please select at least one skill",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -53,7 +77,7 @@ export const RoleSwitcher = ({ userId, currentRole, onRoleChange }: RoleSwitcher
         user_id: userId,
         mobile_number: formData.mobile_number,
         location: formData.location,
-        skills: formData.skills.split(",").map(s => s.trim()),
+        skills: selectedSkills,
         bio: formData.bio,
         experience_years: parseInt(formData.experience_years),
         hourly_rate: parseFloat(formData.hourly_rate),
@@ -162,13 +186,40 @@ export const RoleSwitcher = ({ userId, currentRole, onRoleChange }: RoleSwitcher
         </div>
 
         <div className="space-y-2">
-          <Label>Skills (comma-separated) *</Label>
-          <Input
-            value={formData.skills}
-            onChange={(e) => setFormData({ ...formData, skills: e.target.value })}
-            placeholder="Electrician, Plumber"
-            required
-          />
+          <Label>Skills *</Label>
+          <Select
+            value={selectedSkills[0] || ""}
+            onValueChange={(value) => {
+              if (!selectedSkills.includes(value)) {
+                setSelectedSkills([...selectedSkills, value]);
+              }
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select skills" />
+            </SelectTrigger>
+            <SelectContent>
+              {jobCategories.map((category) => (
+                <SelectItem key={category.id} value={category.name}>
+                  {category.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {selectedSkills.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-2">
+              {selectedSkills.map((skill) => (
+                <Badge
+                  key={skill}
+                  variant="secondary"
+                  className="cursor-pointer"
+                  onClick={() => setSelectedSkills(selectedSkills.filter((s) => s !== skill))}
+                >
+                  {skill} ×
+                </Badge>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="space-y-2">

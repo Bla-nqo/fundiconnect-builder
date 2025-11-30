@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { DollarSign, Star, Briefcase, Clock, MapPin, MessageSquare } from "lucide-react";
+import { DollarSign, Star, Briefcase, Clock, MapPin, MessageSquare, Ban } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { MessagingPanel } from "@/components/MessagingPanel";
 import { useToast } from "@/hooks/use-toast";
@@ -29,6 +29,8 @@ const FundiDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [user, setUser] = useState<any>(null);
+  const [fundiProfile, setFundiProfile] = useState<any>(null);
+  const [isRestricted, setIsRestricted] = useState(false);
   const [stats, setStats] = useState({
     totalEarnings: 0,
     completedJobs: 0,
@@ -40,18 +42,25 @@ const FundiDashboard = () => {
 
   useEffect(() => {
     checkAuth();
-    fetchStats();
-    fetchJobs();
-
-    const jobsChannel = supabase
-      .channel("fundi-jobs")
-      .on("postgres_changes", { event: "*", schema: "public", table: "jobs" }, () => fetchJobs())
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(jobsChannel);
-    };
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      checkFundiVerification();
+      checkRestrictions();
+      fetchStats();
+      fetchJobs();
+
+      const jobsChannel = supabase
+        .channel("fundi-jobs")
+        .on("postgres_changes", { event: "*", schema: "public", table: "jobs" }, () => fetchJobs())
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(jobsChannel);
+      };
+    }
+  }, [user]);
 
   const checkAuth = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -60,6 +69,48 @@ const FundiDashboard = () => {
       return;
     }
     setUser(user);
+  };
+
+  const checkFundiVerification = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data: profile } = await supabase
+      .from("fundi_profiles")
+      .select("*")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    setFundiProfile(profile);
+
+    if (!profile || !profile.admin_approved || !profile.mobile_verified) {
+      toast({
+        title: "Verification Required",
+        description: "Your fundi profile needs to be verified before you can access this dashboard",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const checkRestrictions = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data } = await supabase
+      .from("user_restrictions")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (data) {
+      setIsRestricted(true);
+      toast({
+        title: "Account Restricted",
+        description: data.reason,
+        variant: "destructive",
+      });
+    }
   };
 
   const fetchStats = async () => {
@@ -158,6 +209,39 @@ const FundiDashboard = () => {
       fetchJobs();
     }
   };
+
+  if (!fundiProfile || !fundiProfile.admin_approved || !fundiProfile.mobile_verified) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="p-8 max-w-md text-center">
+          <h2 className="text-2xl font-heading font-bold mb-4">Verification Required</h2>
+          <p className="text-muted-foreground mb-6">
+            Your fundi profile needs to be verified and approved by an admin before you can access the fundi dashboard.
+          </p>
+          <Button onClick={() => navigate("/client-dashboard")} className="w-full">
+            Go to Client Dashboard
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
+  if (isRestricted) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="p-8 max-w-md text-center">
+          <Ban className="w-16 h-16 mx-auto mb-4 text-destructive" />
+          <h2 className="text-2xl font-heading font-bold mb-4">Account Restricted</h2>
+          <p className="text-muted-foreground mb-6">
+            Your account has been restricted due to policy violations. Please contact support for more information.
+          </p>
+          <Button onClick={() => navigate("/client-dashboard")} className="w-full">
+            Go to Client Dashboard
+          </Button>
+        </Card>
+      </div>
+    );
+  }
 
   if (selectedChat) {
     return (
