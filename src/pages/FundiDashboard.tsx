@@ -97,7 +97,7 @@ const FundiDashboard = () => {
       .from("jobs")
       .select(`
         *,
-        profiles:client_id (full_name)
+        profiles!jobs_client_id_fkey (full_name)
       `)
       .eq("fundi_id", user.id)
       .in("status", ["in-progress", "accepted"])
@@ -107,7 +107,7 @@ const FundiDashboard = () => {
       .from("jobs")
       .select(`
         *,
-        profiles:client_id (full_name)
+        profiles!jobs_client_id_fkey (full_name)
       `)
       .is("fundi_id", null)
       .eq("status", "open")

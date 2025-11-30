@@ -114,7 +114,15 @@ export type Database = {
           title?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "jobs_fundi_id_fkey"
+            columns: ["fundi_id"]
+            isOneToOne: false
+            referencedRelation: "fundi_profiles"
+            referencedColumns: ["user_id"]
+          },
+        ]
       }
       messages: {
         Row: {
@@ -210,6 +218,13 @@ export type Database = {
           review?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "ratings_fundi_id_fkey"
+            columns: ["fundi_id"]
+            isOneToOne: false
+            referencedRelation: "fundi_profiles"
+            referencedColumns: ["user_id"]
+          },
           {
             foreignKeyName: "ratings_job_id_fkey"
             columns: ["job_id"]

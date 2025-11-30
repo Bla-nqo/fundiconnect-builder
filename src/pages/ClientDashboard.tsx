@@ -92,8 +92,9 @@ const ClientDashboard = () => {
       .from("jobs")
       .select(`
         *,
-        fundi_profiles:fundi_id (
-          profiles:user_id (full_name)
+        fundi_profiles!jobs_fundi_id_fkey (
+          *,
+          profiles!fundi_profiles_user_id_fkey (full_name)
         )
       `)
       .eq("client_id", user.id)
@@ -107,7 +108,7 @@ const ClientDashboard = () => {
       .from("fundi_profiles")
       .select(`
         *,
-        profiles:user_id (full_name)
+        profiles!fundi_profiles_user_id_fkey (full_name)
       `)
       .eq("admin_approved", true)
       .eq("mobile_verified", true)
