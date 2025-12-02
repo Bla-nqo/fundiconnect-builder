@@ -1,10 +1,37 @@
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Shield, CheckCircle, Users, LogIn } from "lucide-react";
+import { ArrowRight, Shield, CheckCircle, Users, LogIn, Settings } from "lucide-react";
 import { Link } from "react-router-dom";
 import heroImage from "@/assets/hero-fundi.jpg";
 import { ThemeToggle } from "./ThemeToggle";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Hero = () => {
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setIsLoggedIn(true);
+        const { data: hasAdmin } = await supabase.rpc("has_role", {
+          _user_id: user.id,
+          _role: "admin",
+        });
+        setIsAdmin(hasAdmin || false);
+      }
+    };
+    checkAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setIsLoggedIn(!!session?.user);
+      if (!session?.user) setIsAdmin(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   return (
     <section className="relative min-h-screen flex items-center overflow-hidden">
       {/* Background Image with Overlay */}
@@ -22,10 +49,18 @@ export const Hero = () => {
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <h2 className="text-2xl font-heading font-bold text-earth-foreground">FundiConnect</h2>
           <div className="flex items-center gap-4">
+            {isAdmin && (
+              <Button asChild variant="ghost" size="sm" className="text-earth-foreground hover:bg-earth-foreground/10">
+                <Link to="/admin">
+                  <Settings className="w-4 h-4 mr-2" />
+                  Admin
+                </Link>
+              </Button>
+            )}
             <Button asChild variant="ghost" size="sm" className="text-earth-foreground hover:bg-earth-foreground/10">
-              <Link to="/auth">
+              <Link to={isLoggedIn ? "/get-started" : "/auth"}>
                 <LogIn className="w-4 h-4 mr-2" />
-                Sign In
+                {isLoggedIn ? "Dashboard" : "Sign In"}
               </Link>
             </Button>
             <ThemeToggle />
