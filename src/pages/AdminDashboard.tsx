@@ -7,11 +7,13 @@ import { useToast } from "@/hooks/use-toast";
 import { CheckCircle, XCircle, Phone, MapPin, Plus, Edit2, Trash2, Ban } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { NotificationBell } from "@/components/NotificationBell";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface FundiApplication {
   id: string;
@@ -46,16 +48,31 @@ interface UserRestriction {
   };
 }
 
+interface Appeal {
+  id: string;
+  restriction_id: string;
+  user_id: string;
+  appeal_message: string;
+  status: string;
+  admin_response: string | null;
+  created_at: string;
+  profiles: {
+    full_name: string;
+  };
+}
+
 const AdminDashboard = () => {
   const [applications, setApplications] = useState<FundiApplication[]>([]);
   const [jobCategories, setJobCategories] = useState<JobCategory[]>([]);
   const [restrictions, setRestrictions] = useState<UserRestriction[]>([]);
+  const [appeals, setAppeals] = useState<Appeal[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCategoryDialog, setShowCategoryDialog] = useState(false);
   const [showRestrictionDialog, setShowRestrictionDialog] = useState(false);
   const [editingCategory, setEditingCategory] = useState<JobCategory | null>(null);
   const [categoryForm, setCategoryForm] = useState({ name: "", description: "" });
   const [restrictionForm, setRestrictionForm] = useState({ userId: "", reason: "" });
+  const [appealResponse, setAppealResponse] = useState({ id: "", response: "", status: "pending" });
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -64,12 +81,14 @@ const AdminDashboard = () => {
     fetchApplications();
     fetchJobCategories();
     fetchRestrictions();
+    fetchAppeals();
 
     const channel = supabase
       .channel("admin-updates")
       .on("postgres_changes", { event: "*", schema: "public", table: "fundi_profiles" }, () => fetchApplications())
       .on("postgres_changes", { event: "*", schema: "public", table: "job_categories" }, () => fetchJobCategories())
       .on("postgres_changes", { event: "*", schema: "public", table: "user_restrictions" }, () => fetchRestrictions())
+      .on("postgres_changes", { event: "*", schema: "public", table: "restriction_appeals" }, () => fetchAppeals())
       .subscribe();
 
     return () => {
@@ -145,6 +164,21 @@ const AdminDashboard = () => {
 
     if (!error && data) {
       setRestrictions(data as any);
+    }
+  };
+
+  const fetchAppeals = async () => {
+    const { data, error } = await supabase
+      .from("restriction_appeals")
+      .select(`
+        *,
+        profiles:user_id (full_name)
+      `)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false });
+
+    if (!error && data) {
+      setAppeals(data as any);
     }
   };
 
@@ -254,6 +288,40 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleAppealResponse = async (appealId: string, status: string, response: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { error } = await supabase
+      .from("restriction_appeals")
+      .update({
+        status,
+        admin_response: response,
+        reviewed_by: user.id,
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq("id", appealId);
+
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      // If appeal is approved, remove the restriction
+      if (status === "approved") {
+        const appeal = appeals.find((a) => a.id === appealId);
+        if (appeal) {
+          await supabase
+            .from("user_restrictions")
+            .update({ is_active: false })
+            .eq("id", appeal.restriction_id);
+        }
+      }
+      toast({ title: "Success", description: `Appeal ${status}` });
+      setAppealResponse({ id: "", response: "", status: "pending" });
+      fetchAppeals();
+      fetchRestrictions();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <header className="bg-card/80 backdrop-blur-md border-b sticky top-0 z-10">
@@ -264,6 +332,7 @@ const AdminDashboard = () => {
             </Link>
             <div className="flex items-center gap-4">
               <Badge variant="outline" className="bg-primary/10">Admin</Badge>
+              <NotificationBell />
               <ThemeToggle />
             </div>
           </div>
@@ -277,10 +346,16 @@ const AdminDashboard = () => {
         </div>
 
         <Tabs defaultValue="applications" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="applications">Fundi Applications</TabsTrigger>
             <TabsTrigger value="categories">Job Categories</TabsTrigger>
-            <TabsTrigger value="restrictions">User Restrictions</TabsTrigger>
+            <TabsTrigger value="restrictions">Restrictions</TabsTrigger>
+            <TabsTrigger value="appeals">
+              Appeals
+              {appeals.length > 0 && (
+                <Badge className="ml-2" variant="destructive">{appeals.length}</Badge>
+              )}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="applications" className="mt-6">
@@ -497,6 +572,58 @@ const AdminDashboard = () => {
                       >
                         Remove Restriction
                       </Button>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="appeals" className="mt-6">
+            {appeals.length === 0 ? (
+              <Card className="p-12 text-center">
+                <p className="text-muted-foreground">No pending appeals</p>
+              </Card>
+            ) : (
+              <div className="grid gap-4">
+                {appeals.map((appeal) => (
+                  <Card key={appeal.id} className="p-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <h3 className="font-semibold">{appeal.profiles.full_name}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Submitted: {new Date(appeal.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <Badge variant="secondary">Pending</Badge>
+                    </div>
+                    <div className="mb-4">
+                      <p className="text-sm font-medium mb-1">Appeal Message:</p>
+                      <p className="text-sm text-muted-foreground">{appeal.appeal_message}</p>
+                    </div>
+                    <div className="space-y-3">
+                      <Textarea
+                        placeholder="Enter your response..."
+                        value={appealResponse.id === appeal.id ? appealResponse.response : ""}
+                        onChange={(e) => setAppealResponse({ ...appealResponse, id: appeal.id, response: e.target.value })}
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => handleAppealResponse(appeal.id, "approved", appealResponse.response)}
+                          className="flex-1 bg-success hover:bg-success/90"
+                        >
+                          <CheckCircle className="w-4 h-4 mr-2" />
+                          Approve & Lift Restriction
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          onClick={() => handleAppealResponse(appeal.id, "rejected", appealResponse.response)}
+                          className="flex-1"
+                        >
+                          <XCircle className="w-4 h-4 mr-2" />
+                          Reject
+                        </Button>
+                      </div>
                     </div>
                   </Card>
                 ))}

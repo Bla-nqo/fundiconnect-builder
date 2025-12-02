@@ -4,9 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { DollarSign, Star, Briefcase, Clock, MapPin, MessageSquare, Ban } from "lucide-react";
+import { DollarSign, Star, Briefcase, Clock, MapPin, MessageSquare, Ban, AlertTriangle } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { MessagingPanel } from "@/components/MessagingPanel";
+import { NotificationBell } from "@/components/NotificationBell";
+import { AppealForm } from "@/components/AppealForm";
 import { useToast } from "@/hooks/use-toast";
 
 interface Job {
@@ -31,6 +33,8 @@ const FundiDashboard = () => {
   const [user, setUser] = useState<any>(null);
   const [fundiProfile, setFundiProfile] = useState<any>(null);
   const [isRestricted, setIsRestricted] = useState(false);
+  const [restriction, setRestriction] = useState<any>(null);
+  const [appeals, setAppeals] = useState<any[]>([]);
   const [stats, setStats] = useState({
     totalEarnings: 0,
     completedJobs: 0,
@@ -105,6 +109,17 @@ const FundiDashboard = () => {
 
     if (data) {
       setIsRestricted(true);
+      setRestriction(data);
+      
+      // Fetch existing appeals for this restriction
+      const { data: appealsData } = await supabase
+        .from("restriction_appeals")
+        .select("*")
+        .eq("restriction_id", data.id)
+        .order("created_at", { ascending: false });
+      
+      setAppeals(appealsData || []);
+      
       toast({
         title: "Account Restricted",
         description: data.reason,
@@ -226,19 +241,43 @@ const FundiDashboard = () => {
     );
   }
 
-  if (isRestricted) {
+  if (isRestricted && restriction) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <Card className="p-8 max-w-md text-center">
-          <Ban className="w-16 h-16 mx-auto mb-4 text-destructive" />
-          <h2 className="text-2xl font-heading font-bold mb-4">Account Restricted</h2>
-          <p className="text-muted-foreground mb-6">
-            Your account has been restricted due to policy violations. Please contact support for more information.
-          </p>
-          <Button onClick={() => navigate("/client-dashboard")} className="w-full">
-            Go to Client Dashboard
-          </Button>
-        </Card>
+      <div className="min-h-screen bg-background">
+        <header className="bg-card/80 backdrop-blur-md border-b sticky top-0 z-10">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <Link to="/" className="text-2xl font-heading font-bold text-primary">
+                FundiConnect
+              </Link>
+              <div className="flex items-center gap-4">
+                <NotificationBell />
+                <ThemeToggle />
+                <Button variant="ghost" onClick={() => supabase.auth.signOut()}>Logout</Button>
+              </div>
+            </div>
+          </div>
+        </header>
+        
+        <div className="container mx-auto px-4 py-8 max-w-2xl">
+          <div className="flex items-center gap-3 mb-6">
+            <AlertTriangle className="w-8 h-8 text-destructive" />
+            <h1 className="text-3xl font-heading font-bold">Account Status</h1>
+          </div>
+          
+          <AppealForm
+            restrictionId={restriction.id}
+            restrictionReason={restriction.reason}
+            existingAppeals={appeals}
+            onAppealSubmitted={checkRestrictions}
+          />
+          
+          <div className="mt-6">
+            <Button onClick={() => navigate("/client-dashboard")} variant="outline" className="w-full">
+              Go to Client Dashboard
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -265,6 +304,7 @@ const FundiDashboard = () => {
               FundiConnect
             </Link>
             <div className="flex items-center gap-4">
+              <NotificationBell />
               <ThemeToggle />
               <Button variant="ghost" onClick={() => supabase.auth.signOut()}>Logout</Button>
             </div>

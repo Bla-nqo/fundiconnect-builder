@@ -9,11 +9,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Search, Clock, Star, MapPin, MessageSquare } from "lucide-react";
+import { Plus, Search, Clock, Star, MapPin, MessageSquare, AlertTriangle } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { RoleSwitcher } from "@/components/RoleSwitcher";
 import { MessagingPanel } from "@/components/MessagingPanel";
 import { RatingDialog } from "@/components/RatingDialog";
+import { NotificationBell } from "@/components/NotificationBell";
+import { AppealForm } from "@/components/AppealForm";
 import { useToast } from "@/hooks/use-toast";
 
 interface Job {
@@ -53,6 +55,9 @@ const ClientDashboard = () => {
   const [selectedChat, setSelectedChat] = useState<{ id: string; name: string } | null>(null);
   const [selectedRating, setSelectedRating] = useState<{ jobId: string; fundiId: string; fundiName: string } | null>(null);
   const [showJobDialog, setShowJobDialog] = useState(false);
+  const [isRestricted, setIsRestricted] = useState(false);
+  const [restriction, setRestriction] = useState<any>(null);
+  const [appeals, setAppeals] = useState<any[]>([]);
   const [jobForm, setJobForm] = useState({
     title: "",
     description: "",
@@ -65,6 +70,7 @@ const ClientDashboard = () => {
     checkAuth();
     fetchJobs();
     fetchFundis();
+    checkRestrictions();
 
     const jobsChannel = supabase
       .channel("client-jobs")
@@ -83,6 +89,31 @@ const ClientDashboard = () => {
       return;
     }
     setUser(user);
+  };
+
+  const checkRestrictions = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data } = await supabase
+      .from("user_restrictions")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (data) {
+      setIsRestricted(true);
+      setRestriction(data);
+      
+      const { data: appealsData } = await supabase
+        .from("restriction_appeals")
+        .select("*")
+        .eq("restriction_id", data.id)
+        .order("created_at", { ascending: false });
+      
+      setAppeals(appealsData || []);
+    }
   };
 
   const fetchJobs = async () => {
@@ -197,6 +228,41 @@ const ClientDashboard = () => {
     return Math.round(((now - start) / (end - start)) * 100);
   };
 
+  if (isRestricted && restriction) {
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="bg-card/80 backdrop-blur-md border-b sticky top-0 z-10">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center justify-between">
+              <Link to="/" className="text-2xl font-heading font-bold text-primary">
+                FundiConnect
+              </Link>
+              <div className="flex items-center gap-4">
+                <NotificationBell />
+                <ThemeToggle />
+                <Button variant="ghost" onClick={() => supabase.auth.signOut()}>Logout</Button>
+              </div>
+            </div>
+          </div>
+        </header>
+        
+        <div className="container mx-auto px-4 py-8 max-w-2xl">
+          <div className="flex items-center gap-3 mb-6">
+            <AlertTriangle className="w-8 h-8 text-destructive" />
+            <h1 className="text-3xl font-heading font-bold">Account Status</h1>
+          </div>
+          
+          <AppealForm
+            restrictionId={restriction.id}
+            restrictionReason={restriction.reason}
+            existingAppeals={appeals}
+            onAppealSubmitted={checkRestrictions}
+          />
+        </div>
+      </div>
+    );
+  }
+
   if (selectedChat) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -219,6 +285,7 @@ const ClientDashboard = () => {
               FundiConnect
             </Link>
             <div className="flex items-center gap-4">
+              <NotificationBell />
               <ThemeToggle />
               <Button variant="ghost" onClick={() => supabase.auth.signOut()}>Logout</Button>
             </div>
