@@ -120,23 +120,43 @@ const AdminDashboard = () => {
 
   const fetchApplications = async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    // Fetch fundi profiles first
+    const { data: fundiData, error: fundiError } = await supabase
       .from("fundi_profiles")
-      .select(`
-        *,
-        profiles:user_id (full_name, avatar_url)
-      `)
+      .select("*")
       .eq("admin_approved", false)
       .order("created_at", { ascending: false });
 
-    if (error) {
+    if (fundiError) {
       toast({
         title: "Error",
         description: "Failed to load applications",
         variant: "destructive",
       });
+      setLoading(false);
+      return;
+    }
+
+    // Fetch profiles for each fundi
+    if (fundiData && fundiData.length > 0) {
+      const userIds = fundiData.map((f) => f.user_id);
+      const { data: profilesData } = await supabase
+        .from("profiles")
+        .select("user_id, full_name, avatar_url")
+        .in("user_id", userIds);
+
+      const profilesMap = new Map(
+        profilesData?.map((p) => [p.user_id, p]) || []
+      );
+
+      const applicationsWithProfiles = fundiData.map((fundi) => ({
+        ...fundi,
+        profiles: profilesMap.get(fundi.user_id) || { full_name: "Unknown", avatar_url: null },
+      }));
+
+      setApplications(applicationsWithProfiles as any);
     } else {
-      setApplications(data as any || []);
+      setApplications([]);
     }
     setLoading(false);
   };
@@ -153,32 +173,60 @@ const AdminDashboard = () => {
   };
 
   const fetchRestrictions = async () => {
-    const { data, error } = await supabase
+    const { data: restrictionsData, error } = await supabase
       .from("user_restrictions")
-      .select(`
-        *,
-        profiles:user_id (full_name)
-      `)
+      .select("*")
       .eq("is_active", true)
       .order("created_at", { ascending: false });
 
-    if (!error && data) {
-      setRestrictions(data as any);
+    if (!error && restrictionsData && restrictionsData.length > 0) {
+      const userIds = restrictionsData.map((r) => r.user_id);
+      const { data: profilesData } = await supabase
+        .from("profiles")
+        .select("user_id, full_name")
+        .in("user_id", userIds);
+
+      const profilesMap = new Map(
+        profilesData?.map((p) => [p.user_id, p]) || []
+      );
+
+      const restrictionsWithProfiles = restrictionsData.map((r) => ({
+        ...r,
+        profiles: profilesMap.get(r.user_id) || { full_name: "Unknown" },
+      }));
+
+      setRestrictions(restrictionsWithProfiles as any);
+    } else {
+      setRestrictions([]);
     }
   };
 
   const fetchAppeals = async () => {
-    const { data, error } = await supabase
+    const { data: appealsData, error } = await supabase
       .from("restriction_appeals")
-      .select(`
-        *,
-        profiles:user_id (full_name)
-      `)
+      .select("*")
       .eq("status", "pending")
       .order("created_at", { ascending: false });
 
-    if (!error && data) {
-      setAppeals(data as any);
+    if (!error && appealsData && appealsData.length > 0) {
+      const userIds = appealsData.map((a) => a.user_id);
+      const { data: profilesData } = await supabase
+        .from("profiles")
+        .select("user_id, full_name")
+        .in("user_id", userIds);
+
+      const profilesMap = new Map(
+        profilesData?.map((p) => [p.user_id, p]) || []
+      );
+
+      const appealsWithProfiles = appealsData.map((a) => ({
+        ...a,
+        profiles: profilesMap.get(a.user_id) || { full_name: "Unknown" },
+      }));
+
+      setAppeals(appealsWithProfiles as any);
+    } else {
+      setAppeals([]);
     }
   };
 

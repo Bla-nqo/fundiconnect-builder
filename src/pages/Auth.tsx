@@ -24,17 +24,30 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
 
+  const checkAndRedirect = async (userId: string) => {
+    const { data: isAdmin } = await supabase.rpc("has_role", {
+      _user_id: userId,
+      _role: "admin",
+    });
+    
+    if (isAdmin) {
+      navigate("/admin");
+    } else {
+      navigate("/get-started");
+    }
+  };
+
   useEffect(() => {
     // Check if user is already logged in
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        navigate("/get-started");
+        checkAndRedirect(session.user.id);
       }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
-        navigate("/get-started");
+        checkAndRedirect(session.user.id);
       }
     });
 
